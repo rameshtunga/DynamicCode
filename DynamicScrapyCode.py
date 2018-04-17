@@ -45,3 +45,18 @@ lis = BeautifulSoup(page.content, 'html.parser').find_all('article', attrs={'cla
 ExcelTable = getProductDetails(pathList,lis)
 print(ExcelTable[1])
 print(tabulate(ExcelTable[0]))
+
+
+#=======================================single Line=============================================================
+pathList = {'Name':'//*[@id="Adding_Deleting_and_Moving_Lines.xml"]/text()',
+            'Apr':'//*[@id="delete"]/text()'
+            }
+productDict = dict()
+for key in pathList:
+    a = tree.xpath(pathList[key])
+    if len(a)!=0:
+        productDict[key] = a[0]
+    else:
+        productDict[key] = None
+print(productDict)
+
