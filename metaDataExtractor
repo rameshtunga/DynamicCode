@@ -1,0 +1,18 @@
+from bs4 import BeautifulSoup
+import requests
+def getMetaDataContent(content):
+    metaData = dict()
+    jsoup = BeautifulSoup(content)
+    metas = jsoup.find_all('meta')
+
+    for meta in metas:
+        try:
+            s = list(meta.attrs.items())
+            metaData[s[0][1]] = s[1][1]
+        except:
+            pass
+    return metaData
+
+resp = requests.get('http://www.ratingdada.com/').content
+metaDatas = getMetaDataContent(resp)
+print(metaDatas)
