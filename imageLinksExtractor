@@ -1,0 +1,14 @@
+from bs4 import BeautifulSoup
+import requests
+def getImageLinks(content):
+    imageData = set()
+    jsoup = BeautifulSoup(content)
+    imageLinks = jsoup.find_all('img')
+
+    for imageLink in imageLinks:
+        print(imageLink['src'])
+        imageData.add(imageLink['src'])
+    return imageData
+resp = requests.get('http://www.ratingdada.com/').content
+metaDatas = getImageLinks(resp)
+print(metaDatas)
