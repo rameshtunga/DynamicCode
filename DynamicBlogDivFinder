@@ -1,0 +1,30 @@
+from bs4 import BeautifulSoup
+import requests
+
+
+def BlogFounder(resp):
+    jsoup = BeautifulSoup(resp)
+    h2 = jsoup.find_all('h2')
+    h3 = jsoup.find_all('h3')
+    h4 = jsoup.find_all('h4')
+    big = 0
+    blogData = []
+    if len(h2)>big:
+        big = len(h2)
+        blogData = h2
+    if len(h3)>big:
+        blogData = h3
+        big = len(h3)
+    if len(h4)>big:
+        blogData = h4
+        big = len(h4)
+    blog = []
+    for k in blogData:
+        blog.append(k.parent)
+    return blog
+
+resp = requests.get('https://www.reuters.com/search/news?blob=bangalore+tech&sortBy=relevance&dateRange=pastYear').content
+data = BlogFounder(resp)
+for d in data:
+    print(d)
+    print('-----------------------------------------------------------------------------------------------------')
