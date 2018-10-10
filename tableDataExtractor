@@ -1,0 +1,40 @@
+from bs4 import BeautifulSoup
+import operator
+import requests
+from tabulate import tabulate
+import re
+from collections import Counter
+
+resp = requests.get('https://www.w3schools.com/html/html_tables.asp').content
+jsoup = BeautifulSoup(resp)
+tables = jsoup.find_all('table')
+for table in tables:
+    trs = table.find_all('tr')
+    nooftd = 0
+    for tr in trs:
+        tds = tr.find_all(re.compile('th|td'))
+        if len(tds)>nooftd:
+            nooftd = len(tds)
+    trList = []
+    for tr in trs:
+        tds = tr.find_all(re.compile('th|td'))
+        tdList = []
+        for td in tds:
+            colspan = 0
+            try:
+                colspan = int(td['colspan'])
+            except:
+                pass
+            if colspan != 0:
+                tdList.append(td.text)
+                for k in range(colspan-1):
+                    tdList.append('')
+            else:
+                tdList.append(td.text)
+
+
+        trList.append(tdList)
+
+    print(tabulate(trList))
+    print('====================================================================================')
+# print(jsoup)
