@@ -1,0 +1,239 @@
+from bs4 import BeautifulSoup
+from extruct.jsonld import JsonLdExtractor
+import traceback
+from html import unescape
+import statistics
+import re
+import math
+import json
+from datetime import datetime, timedelta
+import dateutil.parser as dparser
+
+def getMetaDataContent(content, keywords):
+    metaData = dict()
+    jsoup = BeautifulSoup(content)
+    metas = jsoup.find_all('meta')
+    for keyword in keywords:
+        try:
+            big = 0
+            for meta in metas:
+                for key, value in meta.attrs.items():
+                    try:
+                        # print(key, value)
+                        if keyword in value:
+                            content = meta.attrs['content']
+                            if content:
+                                if len(content)>big:
+                                    big = len(content)
+                                    metaData[keyword] = content
+                    except:
+                        pass
+        except Exception as e:
+            # traceback.print_exc()
+            return []
+    return metaData
+
+
+def getApplication_ld_json(content, keywords):
+    jsonData = dict()
+    try:
+        jsoup = BeautifulSoup(content)
+        apjson = jsoup.find('script', attrs={'type':'application/ld+json'}).text
+        # print(apjson)
+        if apjson is not None:
+            try:
+                if apjson is not None:
+                    for keyword in keywords:
+                        for key, value in json.loads(apjson.text.replace(": '", ': "').replace("',", '",')).items():
+                            if keyword in key:
+                                if isinstance(value, str):
+                                    jsonData[keyword] = value
+                                elif isinstance(value, dict):
+                                    jsonData[keyword] = value.get('name')
+            except:
+                if jsonData.get('published') is None:
+                    datePublished = re.search('datePublished.*', apjson)
+                    datePublished = datePublished.group(0).split(': ')[-1]
+                    datePublished = re.sub('[",]', '', datePublished)
+                    jsonData['published'] = datePublished
+                    # print('published = ', datePublished)
+                if jsonData.get('description') is None:
+                    description = re.search('description.*', apjson)
+                    # print('description = ',description.group(0).split(': ')[-1].replace('",', '').strip('"'))
+                    jsonData['description'] = description.group(0).split(': ')[-1].replace('",', '').strip('"')
+                if jsonData.get('author') is None:
+                    author = re.search('"author.*\n.*\n.*\n.*', apjson)
+
+                    author = re.search('name.*', author.group(0)).group(0).split(': ')[-1].replace('"', '')
+                    jsonData['author'] = author
+                    # print(author)
+        return jsonData
+    except Exception as e:
+        return jsonData
+
+def getContentInsideTag(content):
+    try:
+        removeTags = ['a', 'script', 'style']
+        jsoup = BeautifulSoup(content)
+        # Fitering Data and getting Content from page source
+        jsoup = jsoup.find('body')
+        for remTag in removeTags:
+            for div in jsoup.find_all(remTag):
+                div.decompose()
+        pContent = []
+        for p in jsoup.find_all('p'):
+            # print('-'.center(100, '-'))
+            p = p.text.strip()
+            if 'Dear' in p:
+                continue
+            # print(p)
+            specialCharacters = re.findall('[^a-zA-Z0-9,\.\'\"\n ]', p)
+            # print(specialCharacters, len(specialCharacters))
+            a = [len(specialCharacters), len(p), p]
+            if len(p) >= 100 and len(specialCharacters)<10:
+                # print(p)
+                pContent.append(a)
+        pContent = sorted(pContent, key=lambda x:x[0], reverse=True)
+
+        # for k in pContent:
+        #     print(k)
+        try:
+            if len(pContent)>3:
+                pContent = pContent[len(pContent[len(pContent)//2])//2]
+            elif len(pContent)!=0:
+                pContent = pContent[0]
+        except:
+            if len(pContent) != 0:
+                pContent = pContent[0]
+
+
+        # print('median = ', pContent)
+
+        if len(pContent) == 0:
+            for p in jsoup.find_all('div', attrs={'class':re.compile('content')}):
+                # print('-'.center(100, '-'))
+                p = p.text.strip()
+                if 'Dear' in p:
+                    continue
+                # print('p = ', p)
+                specialCharacters = re.findall('[^a-zA-Z0-9,\.\'\" ]', p)
+                # print(specialCharacters, len(specialCharacters))
+                a = [len(specialCharacters), len(p), p]
+                if len(p) >= 100 and len(specialCharacters) < 10:
+                    pContent.append(a)
+            pContent = sorted(pContent, key=lambda x: x[0], reverse=True)
+
+            # for k in pContent:
+            #     print(k)
+            try:
+                if len(pContent) > 3:
+                    pContent = pContent[len(pContent[len(pContent) // 2]) // 2]
+                elif len(pContent) != 0:
+                    pContent = pContent[0]
+            except:
+                if len(pContent) != 0:
+                    pContent = pContent[0]
+
+            # print('median = ', pContent)
+
+        return pContent[2]
+    except Exception as e:
+        # traceback.print_exc()
+        return None
+
+
+
+
+def getBlogDivs(response, topDiv=math.nan, subTag=math.nan, subClass=math.nan):
+
+    jsoup = BeautifulSoup(response)
+    if isinstance(topDiv,str):
+        div = jsoup.find(re.compile('div|dl|ul'), attrs={'class':topDiv})
+        # print(div)
+        if isinstance(subTag,str) and isinstance(subClass,str):
+            divs = div.find_all(subTag, attrs={'class':re.compile(subClass)})
+        elif isinstance(subTag,str):
+            # print('hello')
+            divs = div.find_all(subTag)
+    elif isinstance(subTag,str) and isinstance(subClass,str):
+        divs = jsoup.find_all(subTag, attrs={'class': subClass})
+
+    if len(divs) != 0:
+        return divs
+    else:
+        return []
+
+
+def blogData(tagsList):
+
+    tagsData = []
+    filterData = []
+    for r in tagsList:
+        # print('-'.center(100, '-'))
+        try:
+            tag = dict()
+            # print(r)
+            h = r.find(re.compile('(h2|h3|h4|h5)'))
+            anchor = []
+            for a in r.find_all('a'):
+                try:
+                    anchor.append([len(a.text), a['href'], a.text])
+                except:
+                    pass
+
+
+            anchor = sorted(anchor, key = lambda x: int(x[0]),reverse=True)
+            tag['Heading'] = h.text.strip() if h is not None else (anchor[0][2].strip() if len(anchor)!=0 else None)
+            if tag['Heading']:
+                if len(tag['Heading']) <5:
+                    continue
+            else:
+                continue
+            tag['Url'] = anchor[0][1]
+            if tag['Url'] not in filterData:
+                filterData = tag['Url']
+            else:
+                continue
+            print(tag['Heading'], tag['Url'])
+            ptags = [[len(p.text), p.text] for p in r.find_all('p')]
+            ptags = sorted(ptags, key=lambda x: int(x[0]), reverse=True)
+            content = ptags[0][1].replace('\r\n','').strip() if len(ptags) !=0 else None
+
+            tag['Content'] = (content if len(content) >= 100 else None) if content else None
+            text = r.text
+            try:
+                # date = dparser.parse(text, fuzzy=True).date().strftime("%m-%d-%Y")
+                date = re.search('[a-zA-Z\.]* \d?\d, \d{4}|\d{4}[-\.]\d\d[-\.]\d\d|\d\d?[-\/.]\d\d?[-\/.]\d{4}|[a-zA-Z]* \d\d?, [a-zA-Z]* \d{4}|\d\d? [a-zA-Z]*  ?\d{4}', text)
+            except:
+                date = None
+            date = date.group() if date is not None else None
+            if date is not None:
+                currentDay = datetime.today().date()
+                reducedDate = (datetime.today() - timedelta(days=1)).date()
+                try:
+                    olddate = dparser.parse(date, fuzzy=True).date()
+                    if not currentDay >= olddate >= reducedDate:
+                        print(olddate)
+                        continue
+                except:
+                    traceback.print_exc()
+
+
+            tag['Date'] = date
+            tagsData.append(tag)
+        except:
+            traceback.print_exc()
+
+    if len(tagsData) != 0:
+        return tagsData
+    else:
+        return []
+
+
+def dateFromPage(content):
+    try:
+        text = BeautifulSoup(content).text
+        date = re.search('[a-zA-Z\.]* \d?\d, \d{4}|\d{4}[-\.]\d\d[-\.]\d\d|\d\d?[-\.]\d\d?[-\.]\d{4}|[a-zA-Z]* \d\d?, [a-zA-Z]* \d{4}|\d\d? [a-zA-Z]* \d{4}',text)
+        return date.group(0) if date is not None else None
+    except:
+        return None
