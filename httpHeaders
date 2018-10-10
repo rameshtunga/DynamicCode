@@ -1,0 +1,8 @@
+from bs4 import BeautifulSoup
+import requests
+
+
+def getHttpHeaders(url):
+    return requests.get(url).headers
+resp = getHttpHeaders('https://www.reuters.com/search/news?blob=bangalore+tech&sortBy=relevance&dateRange=pastYear')
+print(resp)
