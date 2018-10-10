@@ -1,0 +1,32 @@
+from bs4 import BeautifulSoup
+import operator
+import requests
+import re
+from collections import Counter
+
+
+
+def keywordDensity(resp):
+    jsoup = BeautifulSoup(resp)
+    removeTags = ['a', 'script', 'style']
+    jsoup = jsoup.find('body')
+    for remTag in removeTags:
+        for div in jsoup.find_all(remTag):
+            div.decompose()
+    text = jsoup.text.split()
+    nonPunct = re.compile('\w*')
+    filtered = []
+    for t in text:
+        if re.search('\W', t):
+            continue
+        filtered.append(t)
+    counts = Counter(filtered)
+    print(dict(counts))
+    mydict = dict(counts)
+    sorted_x = sorted(mydict.items(), key=operator.itemgetter(1), reverse=True)
+    return sorted_x
+
+resp = requests.get('http://www.ratingdada.com/1125/aravindha-sametha-movie-review-rating').content
+d = keywordDensity(resp)
+for k in d:
+    print(k)
