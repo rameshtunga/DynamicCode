@@ -1,0 +1,26 @@
+from bs4 import BeautifulSoup
+import requests
+from tabulate import tabulate
+import re
+
+headingData = []
+resp = requests.get('https://www.reuters.com/search/news?blob=bangalore+tech&sortBy=relevance&dateRange=pastYear').content
+removeTags = ['script', 'style']
+jsoup = BeautifulSoup(resp)
+for remTag in removeTags:
+    for div in jsoup.find_all(remTag):
+        div.decompose()
+hs = jsoup.find_all(re.compile('h2|h3|h4'))
+for h in hs:
+    try:
+        print(h)
+        if len(h.find_next_sibling().findChildren(recursive=False)) <=4:
+            # print(h.text, '   ', h.find_next_sibling().text.replace('\n', '').strip('.'))
+            headingData.append([h.text, h.find_next_sibling().text.replace('\n', '').strip('.')])
+    except:
+        pass
+
+    print('====================================================')
+
+print(headingData)
+print(tabulate(headingData))
