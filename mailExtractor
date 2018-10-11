@@ -1,0 +1,12 @@
+from bs4 import BeautifulSoup
+import requests
+import re
+
+headingData = []
+resp = requests.get('http://www.caldwell-list.com/list-brokers/').content
+
+jsoup = BeautifulSoup(resp)
+# print(jsoup.text)
+mails = re.findall('\w*@[\w-]*\.[a-zA-Z]*', jsoup.text)
+for mail in mails:
+    print(mail)
