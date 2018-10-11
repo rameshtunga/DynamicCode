@@ -1,0 +1,65 @@
+from bs4 import BeautifulSoup
+import operator
+import requests
+from tabulate import tabulate
+import re
+from collections import Counter
+
+resp = requests.get('https://timesofindia.indiatimes.com/mostshared.cms').content
+jsoup = BeautifulSoup(resp)
+uls = jsoup.find_all('ul')
+ulData = []
+for ul in uls[12:13]:
+    lis = ul.find_all('li')
+    for li in lis:
+        print(id, '---------',li.text)
+        children = li.findChildren(recursive=False)
+        print(len(children))
+        if len(children) > 1:
+            headingList = []
+            pList = []
+            divList = []
+            imgList = []
+            aList = []
+            aHeadingsList = []
+            otherList = []
+            for child in children:
+                subChilds = child.findChildren()
+                for subChild in subChilds:
+                    if '><' in str(subChild):
+                        continue
+
+                    print(type(subChild))
+                    print(subChild.name)
+                    if subChild.name in ['h2', 'h3', 'h4', 'h5', 'h6']:
+                        headingList.append(subChild.text)
+                    elif subChild.name == 'p':
+                        pList.append(subChild.text)
+
+                    elif subChild.name == 'div':
+                        divList.append(subChild.text)
+                    elif subChild.name == 'a':
+                        aList.append(subChild['href'])
+                        aHeadingsList.append(subChild.text)
+                    elif subChild.name == 'img':
+                        imgList.append(subChild['src'])
+
+                    else:
+                        otherList.append(subChild.text)
+
+                print('------------------------------------------------')
+            print('headingList = ', headingList)
+            print('pList = ', pList)
+            print('divList = ', divList)
+            print('imgList = ', imgList)
+            print('aList = ', aList)
+            print('aHeadingsList = ', aHeadingsList)
+            print('otherList = ', otherList)
+            ulData.append([headingList, aHeadingsList, pList, divList, imgList, aList, otherList])
+        else:
+            ulData.append(li.text)
+        # break
+    print('========================================================')
+
+
+print(tabulate(ulData))
