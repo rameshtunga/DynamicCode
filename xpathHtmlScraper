@@ -1,0 +1,9 @@
+import lxml.etree
+import lxml.html
+import requests
+from io import StringIO
+resp = requests.get('https://www.w3schools.com/js/js_events.asp').content
+root = lxml.html.fromstring(resp)
+title = root.xpath('//*[@id="topnav"]/div/div[1]/a[8]')
+print(title)
+print("My blog title is: '{}'".format(title[0].text.strip()))
