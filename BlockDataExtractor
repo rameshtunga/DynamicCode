@@ -14,12 +14,13 @@ root = lxml.html.fromstring(resp)
 title = root.xpath('//*[@id="titlesdiv"]')
 # print(title)
 html_element = tostring(title[0])
-divs = BeautifulSoup(html_element).find('div')
+divs = BeautifulSoup(html_element).find(re.compile('div|ul'))
+print(divs)
 tableHeaders = ['Extract Date','Heading', 'PContent', 'Content', 'Url', 'ImageUrl', 'PublishedDate']
 presentDate = datetime.now().date()
 tableData = [tableHeaders]
 for div in divs.findChildren(recursive=False):
-    # print(div)
+
     try:
         MainHeading = None
         Content = None
@@ -29,17 +30,17 @@ for div in divs.findChildren(recursive=False):
         published_date = None
         headingList = [h.text.strip() for h in div.find_all(re.compile('h2|h3|h4'))]
         pList = [[len(p), p.text.strip()] for p in div.find_all('p')]
-        divList = [[len(div.text.strip()), div.text] for div in div.find_all('div')]
+        divList = [[len(div.text.strip()), div.text] for div_e in div.find_all('div') for div in div_e.findChildren(recursive = False) ]
         imgList = [img['src'] for img in div.find_all('img')]
         aList = [[a.text.strip(), a['href']] for a in div.find_all('a', attrs={'href':re.compile('.+')})]
-        # print(div.text)
+
         published_date = re.search('[a-zA-Z\.]* \d?\d, \d{4}|'
                                    '\d{4}[-\.]\d\d[-\.]\d\d|'
                                    '\d\d?[-\/.]\d\d?[-\/.]\d{4}|'
                                    '[a-zA-Z]* \d\d?, [a-zA-Z]* \d{4}|'
                                    '\d\d? [a-zA-Z]*  ?\d{4}|'
                                    '\d\d?[a-zA-Z]+ [a-zA-Z]+, \d{4}', div.text)
-        # print(published_date)
+
         try:
             published_date = dparser.parse(published_date.group(0), fuzzy=True).date()
         except:
@@ -54,7 +55,7 @@ for div in divs.findChildren(recursive=False):
                 continue
         else:
             continue
-        print(MainHeading)
+
         if len(pList) !=0:
             pList = sorted(pList, key=itemgetter(0), reverse=True)
             pContent = re.sub(' +',' ', pList[0][1].replace('\n', ''))
@@ -66,21 +67,7 @@ for div in divs.findChildren(recursive=False):
         if len(aList) != 0:
             anch = [a[1] for a in aList]
             Url = anch[0]
-        # print('headingList = ', headingList)
-        # print('headingList = ', MainHeading)
-        #
-        # print('pList = ', pList)
-        # print('pContent = ', pContent)
-        #
-        # print('divList = ', divList)
-        # print('Content = ', Content)
-        #
-        # print('imgList = ', imgList)
-        # print('ImageLink = ', ImageLink)
-        # print('aList = ', aList)
-        # print('Url = ', Url)
-        # print('published_date = ', published_date)
-        # print(div)
+
         tableData.append([presentDate, MainHeading, pContent, Content, Url, ImageLink, published_date])
     except Exception as e:
         print(e)
