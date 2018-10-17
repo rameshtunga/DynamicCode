@@ -1,26 +1,23 @@
-import lxml.etree
+
 import lxml.html
 import requests
 import re
 from datetime import datetime
 from operator import itemgetter
-from lxml.html import fromstring, tostring
+from lxml.html import tostring
 from tabulate import tabulate
 from bs4 import BeautifulSoup
+import pandas as pd
 import dateutil.parser as dparser
-from io import StringIO
-resp = requests.get('http://www.ratingdada.com/1/telugu-movie-reviews-ratings').content
+resp = requests.get('https://www.ndtv.com/india').content
 root = lxml.html.fromstring(resp)
-title = root.xpath('//*[@id="titlesdiv"]')
-# print(title)
+title = root.xpath('//*[@id="ins_storylist"]/ul')
 html_element = tostring(title[0])
-divs = BeautifulSoup(html_element).find(re.compile('div|ul'))
-print(divs)
+divs = BeautifulSoup(html_element).find('body').findNext()
 tableHeaders = ['Extract Date','Heading', 'PContent', 'Content', 'Url', 'ImageUrl', 'PublishedDate']
 presentDate = datetime.now().date()
 tableData = [tableHeaders]
 for div in divs.findChildren(recursive=False):
-
     try:
         MainHeading = None
         Content = None
@@ -30,10 +27,19 @@ for div in divs.findChildren(recursive=False):
         published_date = None
         headingList = [h.text.strip() for h in div.find_all(re.compile('h2|h3|h4'))]
         pList = [[len(p), p.text.strip()] for p in div.find_all('p')]
-        divList = [[len(div.text.strip()), div.text] for div_e in div.find_all('div') for div in div_e.findChildren(recursive = False) ]
+
+        divList = []
+        for div_e in div.find_all('div'):
+            if len(div_e.findChildren(recursive=False)) == 0:
+                divList.append([len(div_e.text.strip()), div_e.text])
+            else:
+                for div_e in div_e.findChildren(recursive=False):
+                    divList.append([len(div_e.text.strip()), div_e.text])
+
         imgList = [img['src'] for img in div.find_all('img')]
         aList = [[a.text.strip(), a['href']] for a in div.find_all('a', attrs={'href':re.compile('.+')})]
-
+        if len(divList) == 0:
+            divList = [[len(div.text.strip()), div.text] for div in div.find_all('span')]
         published_date = re.search('[a-zA-Z\.]* \d?\d, \d{4}|'
                                    '\d{4}[-\.]\d\d[-\.]\d\d|'
                                    '\d\d?[-\/.]\d\d?[-\/.]\d{4}|'
@@ -71,7 +77,8 @@ for div in divs.findChildren(recursive=False):
         tableData.append([presentDate, MainHeading, pContent, Content, Url, ImageLink, published_date])
     except Exception as e:
         print(e)
+
     # print('------------------------------------------------------------------')
 print(tabulate(tableData))
-# print(jsoup)
-# print("My blog title is: '{}'".format(title[0].html))
+df = pd.DataFrame(tableData[1:], columns=tableHeaders)
+print(len(df['PContent']))
