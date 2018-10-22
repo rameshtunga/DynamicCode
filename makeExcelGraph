@@ -1,0 +1,69 @@
+import pandas as pd
+import xlrd
+from pandas_datareader import data, wb
+import time
+import os
+from datetime import datetime
+
+Location = os.getcwd()+'\\output\\'+datetime.today().strftime('%d-%m-%Y')
+EX = pd.ExcelFile(Location+'\\carRentalData.xlsx')
+df = pd.read_excel(EX, 'Consolidated-Mario')
+
+df = df.pivot_table('Rate Per Day', index=['Days','Company'], aggfunc='mean').unstack()
+
+df.loc['Round of 2'] = df.loc[2].apply(lambda x: int(round(x)))
+df.loc['Round of 7'] = df.loc[7].apply(lambda x: int(round(x)))
+df.loc['Percentage'] = [str(round((k[0]/k[1]-1)*100))+'%' for k in list(zip(list(df.loc[2]),list(df.loc[7])))]
+
+
+# excel_file = os.getcwd()+'\\output\\'+datetime.today().strftime('%d-%m-%Y')+'\\Chart.xlsx'
+excel_file = Location+'\\Chart.xlsx'
+sheet_name = 'Analysis '+datetime.today().strftime('%m.%d.%Y')
+
+writer = pd.ExcelWriter(excel_file, engine='xlsxwriter')
+df.to_excel(writer, sheet_name=sheet_name)
+
+time.sleep(3)
+book = xlrd.open_workbook(excel_file)
+sheet = book.sheet_by_index(0)
+
+# Access the XlsxWriter workbook and worksheet objects from the dataframe.
+workbook  = writer.book
+worksheet = writer.sheets[sheet_name]
+
+chart = workbook.add_chart({'type': 'column'})
+colors = ['#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00']
+
+# Configure the series of the chart from the dataframe data.
+row_count = sheet.nrows
+column_count = sheet.ncols
+print('row_count = ', row_count)
+print('column_count = ', column_count)
+i = 0
+for col_num in range(1, row_count-5):
+    chart.add_series({
+        'name':       [sheet_name, 2+col_num, 0],
+        'categories': [sheet_name, 1,1,1,column_count-1],
+        'values':     [sheet_name, col_num+2, 1, col_num+2, column_count-1],
+        'fill':       {'color':  colors[i]},
+        'overlap':    -10,
+    })
+    i+=1
+
+# for row in range(3, row_count):
+#     print(sheet.cell_value(row, 0))
+#     sheet.write(row_count+row, 0, 'Round of'+str(sheet.cell_value(row, 0)))
+#     for col in range(1, column_count):
+#         sheet.write(row_count + row, column_count+col, sheet.cell_value(row, col))
+
+        # print(sheet.cell_value(row, col))
+# Configure the chart axes.
+chart.set_x_axis({'name': 'Companies'})
+chart.set_y_axis({'name': 'Price', 'major_gridlines': {'visible': False}})
+
+# Insert the chart into the worksheet.
+worksheet.insert_chart('K2', chart)
+
+
+# Close the Pandas Excel writer and output the Excel file.
+writer.save()
