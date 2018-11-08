@@ -1,0 +1,247 @@
+"""
+Purpose     : Run All car script files
+        #####################     Change log   ###############################
+        ##------------------------------------------------------------------##
+        ##  Author              ##Date                ##Current Version     ##
+        ##------------------------------------------------------------------##
+        ## Moody's Analytics    ##9th August, 2018    ##V1.0                ##
+        ##------------------------------------------------------------------##
+        ######################################################################
+        Date              Version     Author      Description
+        9th August, 2018   v 1.0       Sairam      running all script files
+"""
+import os, signal
+import logging
+import subprocess as sp
+import glob
+import time
+import pandas as pd
+import re
+from datetime import datetime
+from log_file import function_logger, write_doc
+from ExcelFormat import cellStyle, customizedCell, highlightColumn
+import xlwt
+dir = os.getcwd()+'\\output\\'+datetime.today().strftime('%d-%m-%Y')
+path = dir
+if not os.path.isdir(dir):
+    os.mkdir(dir)
+
+write_doc(doc=__doc__)
+f_logger = function_logger(logging.DEBUG, logging.ERROR)
+f_logger.info('Program Execution Started Time' + str(datetime.now().time()))
+start_time = time.time()
+for filename in glob.glob(os.getcwd()+'\\'+'*'):
+    try:
+        command = None
+        if os.path.isdir(filename):
+            for l in glob.glob(filename + '\\' + '*'):
+                if 'run' in l and 'All' not in l:
+                    cd, command = os.path.abspath(l).rsplit('\\', 1)
+                    print(cd, command)
+
+        if command is not None:
+            alreadyDone = False
+            for f in os.listdir(dir):
+                a = cd.rsplit('\\')
+                print(a[-1].lower(), f)
+                if a[-1].lower() in f.lower():
+                    alreadyDone = True
+                    break
+            if alreadyDone:
+                continue
+
+            print(cd, command)
+            os.chdir(cd)
+            script_time = time.time()
+            stdout = sp.run('python '+command, shell=True, stdout=sp.PIPE)
+            while stdout.returncode:
+                pass
+            if 0 == stdout.returncode:
+                f_logger.info(command+'Executed Successfully. Total Execution Time is {} Min'.format((time.time()-script_time)/60))
+                print(command, 'command executed')
+            else:
+                print(command, 'command execute failed')
+                f_logger.error(command+' Execution failed')
+        # break
+    except Exception as e:
+        print(e)
+
+f_logger.info('Total Execution Time is {} Min'.format((time.time()-start_time)/60))
+
+
+# ===============================Create Excel Sheets=============================================
+
+
+
+required_columns = []
+data_list = []
+try:
+    os.remove(path+'\\carRentalData.xlsx')
+    print('carRentalData file deleted.')
+except Exception as e:
+    print(e)
+try:
+    os.remove(path+'\\consolidate.xls')
+    print('consolidate.xls file deleted.')
+except Exception as e:
+    print(e)
+
+
+def dayFilter(x):
+    if isinstance(x,str):
+        if 'weekend day' in x.lower() or 'day' in x.lower():
+            return 'Day'
+        elif 'week' in x.lower():
+            return 'Week'
+        elif 'total' in x.lower() or 'usd' in x.lower():
+            return 'Total'
+    else:
+        return None
+
+for k in os.listdir(path):
+    print(k)
+    if '.xlsx' in k:
+        df = pd.read_excel(path+'\\'+k)
+        try:
+            df['payLaterAmountUnit'] = df['payLaterAmountUnit'].apply(dayFilter)
+        except:
+            pass
+        try:
+            df['payLaterTotalUnit'] = df['payLaterTotalUnit'].apply(dayFilter)
+        except:
+            pass
+        data_list.append(df)
+df4 = pd.concat(data_list)
+required_fields = ["Date", "pickup_date", "return_date","Days",
+                   "Location Code", "className", "vehicleName", "payLaterAmount", "payLaterAmountUnit",
+                   "payLaterTotalAmount","Rate Per Day","payLaterTotalUnit", "sitename"]
+
+
+required = ["Date", "pickup_date", "return_date","Location","Airport name", "selected_location",
+                   "Location Code", "className", "vehicleName", "payLaterAmount", "payLaterAmountUnit",
+                   "payLaterTotalAmount","payLaterTotalUnit", "sitename"]
+consoldated = df4[required]
+def findDays(x):
+    date_format = "%m/%d/%Y"
+    a = datetime.strptime(x[0], date_format)
+    b = datetime.strptime(x[1], date_format)
+    delta = b - a
+    return delta.days
+def payPerDay(x):
+    return round((x[1]/int(x[0])), 2)
+
+df4.to_excel('asdsdsasad.xlsx', index=False)
+print(df4['payLaterTotalAmount'])
+df4['payLaterTotalAmount'] = df4['payLaterTotalAmount'].apply(lambda x:float(re.sub('[^0-9\.]', '',x)))
+df4['Days'] = df4[['pickup_date', 'return_date']].apply(findDays, axis = 1)
+df4['Rate Per Day'] = df4[['Days', 'payLaterTotalAmount']].apply(payPerDay, axis = 1)
+df4 = df4[required_fields]
+renamecolumns={'Date': 'Scrape_Date',
+                    'pickup_date': 'Pickup_Date',
+                    'return_date': 'Return_Date',
+                    'Location': 'Location_Code',
+                    'Location Code': 'Location_Code',
+                    'className': 'Class_Name',
+                    'vehicleName': 'Vehicle_Name',
+                    'payLaterAmount': 'Pay_Later_Amount',
+                    'payLaterAmountUnit': 'Pay_Later_Amount_Unit',
+                    'payLaterTotalAmount': 'Pay_Later_Total_Amount',
+                    'payLaterTotalUnit': 'Pay_Later_Total_Unit',
+                    'sitename': 'Company',
+                    }
+
+df4.rename(columns=renamecolumns, inplace=True)
+final_data = {'Consolidated-Mario': df4}
+consoldated.rename(columns=renamecolumns, inplace=True)
+final_data['Consolidated'] = consoldated
+
+print('-'.center(100, '-'))
+
+
+for k in os.listdir(path):
+    print(k)
+    if '.xlsx' in k:
+
+        df = pd.read_excel(path+'\\'+k)
+        try:
+            df['payLaterAmountUnit'] = df['payLaterAmountUnit'].apply(dayFilter)
+        except:
+            pass
+        try:
+            df['payLaterTotalUnit'] = df['payLaterTotalUnit'].apply(dayFilter)
+        except:
+            pass
+        df.rename(columns=renamecolumns, inplace=True)
+        final_data[k.split('.')[0]] = df
+
+OUTPUT_LOCATION = path+'\\carRentalData.xlsx'
+sheetRename = {'alamoCarData': 'Alamo',
+               'avisCarData': 'Avis',
+               'budgetCarData': 'Budget',
+               'carthriftyData': 'Carthrifty',
+               'dollar_CarsData': 'Dollars',
+               'enterpriseCarData': 'Enterprise',
+               'hertzCarsData': 'Hertz',
+               'nationalCarData': 'National',
+               'Consolidated': 'Consolidated',
+               'Consolidated-Mario': 'Consolidated-Mario'
+               }
+print('-'.center(100, '-'))
+with pd.ExcelWriter(OUTPUT_LOCATION, engine='xlsxwriter') as writer:
+    for ws_name, df_sheet in final_data.items():
+        print(ws_name)
+        try:
+
+            df_sheet.to_excel(writer, sheet_name=sheetRename[ws_name], index=False)
+
+        except Exception as error:
+            print(error)
+
+print('Execution Completed..')
+
+
+#==============================Format Excel=========================
+
+book = xlwt.Workbook()
+df = pd.ExcelFile(OUTPUT_LOCATION)
+cellProperties_headers = {'fontSize': 9,
+                  'fontStyle': 'Calibri',
+                  'fontBold': True,
+                  'cellBorderBottom': 'thin',
+                  'wrapText': True,
+                  'text_horizontal_alignment': 'left',
+                  'text_vertical_alignment':'top'
+                  }
+
+cellProperties_content = {'fontSize': 9,
+                  'fontStyle': 'Calibri',
+
+                  }
+import math
+headerStyle = cellStyle(cellProperties = cellProperties_headers)
+contentStyle = cellStyle(cellProperties=cellProperties_content)
+highLightProperties = highlightColumn(cellProperties = cellProperties_content, color = 'gray25')
+
+for sheetName in df.sheet_names:
+
+    sheet = book.add_sheet(sheetName)
+    df1 = pd.read_excel(df, sheetName)
+    for col, value in enumerate(df1.columns.values.tolist()):
+        customizedCell(sheet, 0, col, value, style = headerStyle)
+
+    for row,value in enumerate(df1.values.tolist()):
+        for col, val in enumerate(value):
+            if isinstance(val, float):
+                if math.isnan(val):
+                    val = ' '
+            if sheetName == 'Consolidated-Mario':
+                if col in [3,10]:
+                    customizedCell(sheet, row+1, col, val, style = highLightProperties)
+                else:
+                    customizedCell(sheet, row + 1, col, val, style=contentStyle)
+            else:
+                customizedCell(sheet, row + 1, col, val, style = contentStyle)
+
+
+
+book.save(path+'\\consolidate.xls')
