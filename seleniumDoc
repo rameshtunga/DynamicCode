@@ -1,0 +1,8 @@
+selenium_url: send url
+input_Area: pass values['Xpath', 'Value'],
+click_Area: click functin (pass xpath)
+dropDown_1: ['Xpath', 'Exact Value']
+sleep: Sleep Functionality
+moveToBottomPage_dddazsd : [time, loopcount] scrolling to bottom page
+scroll_dsfds : give particular div xpath (scroll a particular div),
+load_more: xpath
