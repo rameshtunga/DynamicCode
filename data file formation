@@ -1,0 +1,35 @@
+{ 
+        'dataFile_1':{
+            "homeBlogData_dfdf":{
+                "blogMainDivPath":"Take Selector Only",
+                "blogPath":[
+                    ['MovieName', 'text', 'Take Selector Only'],
+                    ['Date', 'text', 'Take Selector Only'],
+                    ['User Rating', 'text', 'Take Selector Only', 'exact'],
+                    ['Critic Rating', 'text', 'Take Selector Only', 'exact'],
+                    ['Link', 'a', 'Take Selector Only']
+                    ['Image', 'attrs|img', 'Take Selector Only']
+                ]
+            },
+            "singlePath_1": ['MovieData', 'text', 'Selector Path Or Xpath'],
+            'metaData':'metaData',
+            'bodyContent':'bodyContent'
+            
+        },
+        'forLoop': {'dataFilePath': 'dataFile_1',
+                                   'path':'dataFile_1>homeBlogData_dfdf>Link',
+                                   'attach':'https://www.reuters.com',if url comes like this ./movie/1/guru
+                                   'dataFile':{
+                                       "singlePath_1": ['MovieData', 'text', 'Selector Path Or Xpath'],
+                                        "homeBlogData_verdicts":{
+                                            'blogMainDivPath':Take Selector Only',
+                                            'blogPath':[['Image', 'img', 'Take Selector Only'],
+                                                        ['Rating', 'text', 'Take Selector Only'],
+                                                        ['Content', 'text', 'Take Selector Only'],
+                                                        ['Url', 'a', 'Take Selector Only']
+                                                        ]
+                                        }
+                                   }
+                    }
+
+    }
