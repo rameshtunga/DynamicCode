@@ -1,0 +1,123 @@
+from tabula import read_pdf
+
+
+import pandas as pd
+import tabula
+import os
+
+def getPdfTables(data, splitCharacters,  headerLines=None, splitHeaders=None, tableNumber = None):
+
+    import re
+    data = re.sub('\$ +', ' $', data)
+    formats = '[\$\d\.]'
+
+    lines = [k for k in data.splitlines() if len(k)>5]
+    checkLines = []
+    for id, line in enumerate(lines):
+        print(line)
+        # splines = line.split()
+        splines = re.split('['+splitCharacters+']+', line)
+        if len(splines)>3:
+
+            s1 = True if re.search(formats, splines[-1]) else False
+            s2 = True if re.search(formats, splines[-2]) else False
+            s3 = True if re.search(formats, splines[-3]) else False
+            if s1 and s2 and s3:
+                checkLines.append([id, splines])
+
+
+    startValue = 0
+    endValue = 0
+    found = True
+    dummyList = []
+    starts = []
+    for id, ch in enumerate(checkLines):
+
+            n1 = ch[0]+1
+            try:
+                n2 = checkLines[id+1][0]
+            except:
+                n2 = id
+            if n1 == n2:
+                if found:
+                    startValue = id
+                found = False
+            else:
+                endValue = id
+                found = True
+                dummyList.append([id, checkLines[startValue:endValue+1]])
+                starts.append(startValue)
+    tables = []
+
+    for mainId, k in enumerate(dummyList):
+        tData = k[1]
+        tableId = tData[0][0]
+        firstRow = tData[0][1]
+        secondRows = tData[1:]
+        columnCount = 0
+        for id, col in enumerate(firstRow[::-1]):
+            colFound = 0
+            for sec in secondRows:
+                try:
+                    sec = sec[1]
+                    if re.search(formats, col) and re.search(formats, sec[-(id + 1)]):
+                        colFound+=1
+                except:
+                    pass
+
+            if (len(secondRows)-2)<colFound:
+                columnCount+=1
+
+        tableResult = []
+        for m in tData:
+            text = [' '.join(m[1][:-columnCount])]
+            text.extend(m[1][-columnCount:])
+            tableResult.append(text)
+            print(text)
+        tables.append(tableResult)
+        if not os.path.exists('testFolder'):
+            os.mkdir('testFolder')
+        df = pd.DataFrame(tableResult, columns=None)
+        df.to_excel('testFolder\\texxxx_'+str(mainId)+'.xlsx', index=False)
+    heads = []
+    if tableNumber is not None:
+
+        t = tables[tableNumber]
+        print('t = ', t[0][0])
+        headers = None
+        for id , line in enumerate(lines):
+            if t[0][0] in line:
+                print('id found at ', id)
+                headers = lines[id-headerLines:id]
+
+        if headers:
+
+            for hid, splitH in enumerate(splitHeaders):
+                h = [k for k in re.split(splitH[0], headers[hid]) if len(k)>2]
+                heads.append(h)
+
+            print(heads)
+            print('headers = ',headers)
+        return [heads, t]
+    return [heads,tables]
+
+
+
+
+df = tabula.read_pdf('http://investor.mercadolibre.com/static-files/113ee1f2-a6bd-40e1-a483-6cd185c01280',spreadsheet=True, pages = '4', multiple_tables = True)
+data = tabula.convert_into('http://investor.mercadolibre.com/static-files/113ee1f2-a6bd-40e1-a483-6cd185c01280', "output.csv",pages = '5', multiple_tables = True, output_format="csv")
+file = open('output.csv', 'r')
+data = file.read()
+print(data)
+
+splitCharacters = ',' #Split line Character to split all lines into columns
+tableNumber = 0 #Find the table number and send it here
+headerLines = 1 #Choose how many lines has head section
+splitHeaders = [['Ended  ', 2], [',   ', 2], ['[^0-9]+', 4]] #Split Headlines based on regular expressions.
+splitHeaders = [[' ', 2]]
+# tables = getPdfTables(data, splitCharacters, headerLines, splitHeaders, tableNumber)
+tables = getPdfTables(data, splitCharacters, headerLines=headerLines)
+print(tables)
+
+
+# data.to_csv('meli.csv')
